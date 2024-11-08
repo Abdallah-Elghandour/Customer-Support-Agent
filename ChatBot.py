@@ -1,4 +1,4 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, BitsAndBytesConfig
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.memory import ChatMessageHistory
 from langchain.llms import HuggingFacePipeline
@@ -12,20 +12,28 @@ class LLAMA2:
         self.df['combined_text'] = "Instruction: " + self.df["instruction"] + "\nResponse: " + self.df["response"]
         self.documents = self.df['combined_text'].tolist()
 
+        self.quant_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_quant_type="nf4"
+        )
         # Initialize embedding model and vector store
         self.embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         self.db = FAISS.from_texts(self.documents, self.embedding_model)
 
         # Initialize Llama2 model
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, device_map="auto")
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quantization_config=self.quant_config).to("cuda")
+        
         self.pipe = pipeline(
             "text-generation",
             model=self.model,
             tokenizer=self.tokenizer,
             max_new_tokens=256,
             temperature=0.5,
-            top_p=0.95,
+            top_p=0.95
         )
         self.llm = HuggingFacePipeline(pipeline=self.pipe)
 
