@@ -5,6 +5,7 @@ from langchain.llms import HuggingFacePipeline
 from langchain.vectorstores import FAISS
 import pandas as pd
 import torch
+import gradio as gr
 
 class LLAMA2:
     def __init__(self, csv_file, model_name="meta-llama/Llama-2-7b-chat-hf"):
@@ -47,7 +48,7 @@ class LLAMA2:
         context = "\n".join([doc.page_content for doc in retrieved_docs])
         return context
     
-    def get_response(self, query):
+    def get_response(self, query, history=None):
         context = self.get_context(query)
         self.history.add_user_message(query)
         
@@ -64,45 +65,12 @@ class LLAMA2:
 
         return ai_response
 
-    def chat_with_user(self):
-        print("Welcome to Llama2 Customer Support Chat! Type 'exit' or 'quit' to end the conversation.")
-        while True:
-            user_query = input("You: ")
-            if user_query.lower() in ["exit", "quit"]:
-                print("Exiting chat. Goodbye!")
-                break
-            response = self.get_response(user_query)
-            print(f"Chatbot: {response}\n")
 
 if __name__ == "__main__":
-    chatbot = LLAMA2('customer_support_dataset.csv')
-    chatbot.chat_with_user()
+    llm = LLAMA2('customer_support_dataset.csv')
+    chatbot=gr.ChatInterface(
+        fn=llm.get_response,
+        type="messages",
+    )
+    chatbot.launch()
 
-# output
-# Welcome to Llama2 Customer Support Chat! Type 'exit' or 'quit' to end the conversation.
-
-# You: help me about payment
-# Chatbot: Payment assistance is available 24/7. Please visit our website or contact our customer support team for any questions or concerns regarding payments. Our team is here to help you resolve any payment-related issues you may have.
-
-# You: i dont know how to access the payment section?
-# Chatbot: Response: I apologize for any confusion. To access the payment section, you can follow these steps:
-
-# 1. Go to our website's homepage and look for the "Payment Methods" or "Checkout" section. It is usually located in the top right corner or at the bottom of the page.
-# 2. Click on the "Payment Methods" or "Checkout" link to navigate to the payment page.
-# 3. Once you are on the payment page, you will see a list of available payment methods.
-# 4. Choose the payment method you want to use and follow the instructions provided to complete your payment.
-
-# If you are still unable to find the payment section, please let me know, and I will be happy to assist you further.
-
-# You: thanks
-# Chatbot: Response: Of course! Our website accepts the following payment methods:
-
-# * Credit/Debit Cards (Visa, Mastercard, American Express, Discover)
-# * PayPal
-# * Bank Transfer
-# * E-check
-
-# If you have any questions or need further assistance, please don't hesitate to ask. We're here to help!
-
-# You: exit
-# Exiting chat. Goodbye!
